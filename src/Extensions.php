@@ -10,18 +10,15 @@ class Extensions
 {
     /**
      * Extends the given query builder
-     * @param Builder $query
-     * @return Builder
      */
-    public static function extend(Builder $query): Builder
+    public static function extend(): void
     {
-        $query->macro('bufferedIterator', function () {
+        Builder::macro('bufferedIterator', function () {
             return Extensions::bufferedIterator($this, ...func_get_args());
         });
-        $query->macro('paginateLazily', function () {
+        Builder::macro('paginateLazily', function () {
             return Extensions::paginateLazily($this, ...func_get_args());
         });
-        return $query;
     }
 
     /**
