@@ -3,11 +3,23 @@
 Currently only provides extensions to make it easier to work with paged result sets.
 Both methods don't buffer the result set, so once a page is consumed, a new query will be issued to retrieve the next page.
 
+The package also has a safer method to count records (`getCount()`), which is supposed to work faster (by dropping `ORDER BY` clause) and be more reliable (works with `GROUP BY` clauses) than the Laravel's `count()` method.
+
+
+## Safely count records with the getCount()
+
+```php
+getCount(): int
+```
+
+If you've got a `SELECT field FROM test GROUP BY field`, the Laravel's `count()` will convert it to `SELECT COUNT(0) FROM test GROUP BY field`, which might retrieve N records. Laravel will retrieve only the value for the first record, which will break user expectations.
+
+This `getCount()` method will instead generate a `SELECT COUNT(0) FROM (SELECT 0 FROM test GROUP BY field)` which will retrieve the proper record count.
 
 ## Lazy Paginator
 
 ```php
-paginateLazily(Builder $query, int $rows)
+paginateLazily(Builder $query, int $rows): \Generator
 ```
 
 Retrieves a generator that will run through all the records of every page (broken by `$rows`).
@@ -40,7 +52,8 @@ This argument is used to tell the paginator which fields should be used to sort,
 ```php
 use JonasRaoni\QueryBuilder\Extensions;
 
-$records = Extensions::extend($capsule->table('posts'))
+Extensions::extend();
+$records = $connection->table('posts')
     ->select('id', 'date', 'title')
     // Will produce an "ORDER BY id DESC, IF(date IS NULL, 0, 1)"
     ->bufferedIterator(
@@ -82,11 +95,13 @@ The package just has one class (`JonasRaoni\QueryBuilder\Extensions`) which can 
 
 ### A. Macro extensions
 
-Call the `extend` method, passing an instance of the Builder:
+Call the `extend` method, to extend all Builder instances:
+
 ```php
 use JonasRaoni\QueryBuilder\Extensions;
 
-$records = Extensions::extend($capsule->table('test'))
+Extensions::extend();
+$records = $connection->table('test')
     ->select('field')
     ->orderBy('field')
     ->paginateLazily(100);
@@ -94,6 +109,9 @@ $records = Extensions::extend($capsule->table('test'))
 foreach ($records as $record) {
     echo $record->id;
 }
+
+echo $connection->table('test')->getCount();
+
 ```
 
 ### B. Calling the methods directly
@@ -101,7 +119,7 @@ foreach ($records as $record) {
 ```php
 use JonasRaoni\QueryBuilder\Extensions;
 
-$queryBuilder = $capsule
+$queryBuilder = $connection
     ->table('test')
     ->select('field')
     ->orderBy('field');
